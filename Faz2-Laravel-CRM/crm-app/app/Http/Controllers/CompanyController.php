@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Company\CreatesCompany;
+use App\Contracts\Company\UpdatesCompany;
+use App\Http\Requests\StoreCompanyRequest;
+use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\Company;
 use Illuminate\Http\Request;
 
@@ -28,21 +32,9 @@ class CompanyController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreCompanyRequest $request, CreatesCompany $action)
     {
-        $veri = $request->validate([
-            'name' => 'required|max:255',
-            'city' => 'nullable|max:255',
-            'logo' => 'nullable|image|max:2048',   // resim olmali, en fazla 2048 KB
-        ]);
-
-        if ($request->hasFile('logo')) {
-            // store() -> storage/app/public/logos/ altina rastgele isimle kaydeder, $veri['logo_path']'e YOLU atar (dosyanin kendisini degil)
-            $veri['logo_path'] = $request->file('logo')->store('logos', 'public');
-        }
-        unset($veri['logo']);   // 'logo' -> $fillable'da yok, Company::create'e dogrudan gecirmiyoruz
-
-        $company = Company::create($veri);
+        $company = $action($request->validated(), $request->file('logo'));
 
         return redirect()->route('companies.show', $company)->with('success', 'Şirket eklendi.');
     }
@@ -70,10 +62,13 @@ class CompanyController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+public function update(UpdateCompanyRequest $request, Company $company, UpdatesCompany $action)
+{
+    $action($company, $request->validated(), $request->file('logo'));
+
+    return redirect()->route('companies.show', $company)->with('success', 'Şirket güncellendi.');
+}
+
 
     /**
      * Remove the specified resource from storage.
